@@ -1,8 +1,20 @@
 ## Lunash
 
-Lunash is a simple dashboard for monitoring and managing your Docker containers using `docker-compose`. It provides an easy-to-use interface to view the status of your containers, start and stop them, and view logs.
+Lunash is a simple dashboard for monitoring and managing your Docker containers using `docker-compose`. It provides an easy-to-use interface to view the status of your apps, start and stop them, and view their logs.
 
 It also allows you to look for updates for your Docker images and update them with a single click searching for the latest versions on Docker Hub and GitHub Container Registry.
+
+## Table of Contents
+
+-   [Why Lunash?](#why-lunash)
+-   [Development](#development)
+    -   [Using Docker-compose](#using-docker-compose)
+    -   [Running Locally](#running-locally)
+
+## Why Lunash?
+
+We know that there are many tools available for managing Docker containers like Watchtower, Portainer, or even Docker Desktop. However, we created Lunash to provide a lightweight and straightforward solution specifically for users who prefer using `docker-compose` for managing their applications.
+We don't want to replace existing tools but rather offer an alternative that focuses on simplicity and ease of use for `docker-compose` users.
 
 ## Development
 

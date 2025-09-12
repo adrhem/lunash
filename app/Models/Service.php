@@ -4,7 +4,7 @@ namespace App\Models;
 
 use MongoDB\Laravel\Eloquent\Model;
 
-class DockerManifest extends Model
+class Service extends Model
 {
     /**
      * The attributes that are mass assignable.
@@ -12,12 +12,8 @@ class DockerManifest extends Model
      * @var list<string>
      */
     protected $fillable = [
+        'name',
         'image',
-        'tag',
-        'manifest',
-    ];
-
-    protected $casts = [
-        'manifest' => 'array',
+        'tag'
     ];
 }

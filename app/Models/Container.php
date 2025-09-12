@@ -13,14 +13,12 @@ class Container extends Model
      * @var list<string>
      */
     protected $fillable = [
-        'container_id',
-        'image',
         'name',
-        'state',
+        'image',
         'command',
+        'service',
+        'status'
     ];
-
-    public final static array $states = ["created", "running", "paused", "restarting", "exited", "removing", "dead"];
 
     protected function command(): Attribute
     {
