@@ -2,7 +2,6 @@
 
 namespace App\Filament\Resources\Containers;
 
-use App\Filament\Resources\Containers\Pages\RefreshContainer;
 use App\Filament\Resources\Containers\Pages\ListContainers;
 use App\Filament\Resources\Containers\Schemas\ContainerForm;
 use App\Filament\Resources\Containers\Tables\ContainersTable;
@@ -42,7 +41,6 @@ class ContainerResource extends Resource
     {
         return [
             'index' => ListContainers::route('/'),
-            'refresh' => RefreshContainer::route('/refresh'),
         ];
     }
 }

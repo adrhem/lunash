@@ -1,6 +1,5 @@
 <?php
 
-use App\Models\Container;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -12,14 +11,13 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('containers', function (Blueprint $table) {
+        Schema::create('docker_manifests', function (Blueprint $table) {
             $table->id();
-            $table->string("container_id")->unique();
-            $table->string("image")->index();
-            $table->string("name");
-            $table->enum("state", Container::$states);
-            $table->string("command")->nullable();
+            $table->string("image");
+            $table->string("tag");
+            $table->json("manifest");
             $table->timestamps();
+            $table->index(['image', 'tag']);
         });
     }
 
@@ -28,6 +26,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('containers');
+        Schema::dropIfExists('docker_manifests');
     }
 };

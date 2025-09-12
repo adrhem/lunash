@@ -15,11 +15,11 @@ class ListContainers extends ListRecords
     {
         return [
             Action::make('refresh')
-                ->iconButton()
+                ->button()
                 ->label('Refresh Containers')
                 ->name('Refresh Containers')
                 ->icon(Heroicon::ArrowPath)
-                ->url(fn(): string => route('refresh-containers'))
+                ->url(fn(): string => route('containers.refresh'))
                 ->postToUrl(),
         ];
     }
