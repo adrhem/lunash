@@ -36,11 +36,11 @@ class Application extends Model
     public function parsedYamlServices(): Attribute
     {
         return Attribute::make(
-            get: fn($value, $attributes) => self::parseComposeFile($attributes['compose_file']),
+            get: fn($_, $attributes) => !empty($attributes['compose_file']) ? self::parseComposeFile($attributes['compose_file']) : [],
         );
     }
 
-    public static function parseComposeFile($composeFile): array
+    public static function parseComposeFile(string $composeFile): array
     {
         try {
             $parsed = Yaml::parseFile($composeFile);
@@ -58,6 +58,27 @@ class Application extends Model
             }, $parsed['services'], array_keys($parsed['services']));
         } catch (ParseException $e) {
             return [];
+        }
+    }
+
+    protected static function booted(): void
+    {
+        static::created(function (Application $application) {
+            $application->updateServices();
+        });
+        static::updated(function (Application $application) {
+            $application->updateServices();
+        });
+        static::saved(function (Application $application) {
+            $application->updateServices();
+        });
+    }
+
+    private function updateServices(): void
+    {
+        $this->services()->delete();
+        foreach ($this->parsedYamlServices as $service) {
+            $this->services()->performInsert(new Service($service));
         }
     }
 }

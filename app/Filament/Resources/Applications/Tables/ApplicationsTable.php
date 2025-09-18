@@ -26,13 +26,8 @@ class ApplicationsTable
                         default => 'gray',
                     }),
                 TextColumn::make('services_count')->label('Services'),
-                TextColumn::make('compose_file')
-                    ->label('Compose File Path')
-                    ->wrap()
-                    ->lineClamp(1)
-                    ->copyable()
-                    ->copyMessage('Copied to clipboard')
-                    ->copyMessageDuration(1500),
+                TextColumn::make('created_at')->label('Created')->dateTime('Y-m-d H:i:s'),
+                TextColumn::make('updated_at')->label('Last Updated')->dateTime('Y-m-d H:i:s'),
             ])->recordActions([
                 Actions\Start::make(),
                 Actions\Stop::make(),

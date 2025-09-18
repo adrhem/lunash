@@ -44,7 +44,6 @@ class ApplicationController extends Controller
                 ->success()
                 ->send();
         } else {
-            dd(Artisan::output());
             Notification::make()
                 ->title('Failed to start the application. Please check the logs for details.')
                 ->body(Artisan::output())

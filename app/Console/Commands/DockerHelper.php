@@ -77,7 +77,6 @@ class DockerHelper extends Command
             $this->error(implode("\n", $output));
             return Command::FAILURE;
         }
-        $existingNames = Application::pluck('name')->toArray();
         $services = [];
 
         foreach (
