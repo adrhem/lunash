@@ -28,11 +28,6 @@ class Application extends Model
         return $this->embedsMany(Service::class);
     }
 
-    public function containers(): EmbedsMany
-    {
-        return $this->embedsMany(Container::class);
-    }
-
     public function parsedYamlServices(): Attribute
     {
         return Attribute::make(
