@@ -17,6 +17,8 @@ class Application extends Model
      */
     protected $fillable = [
         'name',
+        'status',
+        'services_count',
         'compose_file',
         'services',
     ];

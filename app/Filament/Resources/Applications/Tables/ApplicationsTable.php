@@ -2,9 +2,7 @@
 
 namespace App\Filament\Resources\Applications\Tables;
 
-use Filament\Actions\BulkActionGroup;
-use Filament\Actions\DeleteBulkAction;
-use Filament\Actions\EditAction;
+use App\Filament\Resources\Applications\Actions;
 use Filament\Tables\Table;
 use Filament\Tables\Columns\TextColumn;
 
@@ -16,15 +14,31 @@ class ApplicationsTable
         return $table
             ->columns([
                 TextColumn::make('name')->label('Application Name')->searchable()->sortable(),
-                TextColumn::make('compose_file')->label('Compose File Path')->limit(25, end: '...'),
+                TextColumn::make('status')
+                    ->label('Status')
+                    ->sortable()
+                    ->badge()
+                    ->color(fn(string $state): string => match ($state) {
+                        'running' => 'success',
+                        'stopped' => 'danger',
+                        'exited' => 'warning',
+                        'created' => 'info',
+                        default => 'gray',
+                    }),
+                TextColumn::make('services_count')->label('Services'),
+                TextColumn::make('compose_file')
+                    ->label('Compose File Path')
+                    ->wrap()
+                    ->lineClamp(1)
+                    ->copyable()
+                    ->copyMessage('Copied to clipboard')
+                    ->copyMessageDuration(1500),
+            ])->recordActions([
+                Actions\Start::make(),
+                Actions\Stop::make(),
+                Actions\Restart::make(),
             ])
-            ->recordActions([
-                EditAction::make(),
-            ])
-            ->toolbarActions([
-                BulkActionGroup::make([
-                    DeleteBulkAction::make(),
-                ]),
-            ]);
+            ->defaultGroup('status')
+            ->emptyStateHeading('No applications! Click on the refresh button to load them.');
     }
 }

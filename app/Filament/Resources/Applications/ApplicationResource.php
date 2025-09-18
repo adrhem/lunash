@@ -36,8 +36,6 @@ class ApplicationResource extends Resource
     {
         return [
             'index' => ListApplications::route('/'),
-            'create' => CreateApplication::route('/create'),
-            'edit' => EditApplication::route('/{record}/edit'),
         ];
     }
 }

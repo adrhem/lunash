@@ -13,7 +13,9 @@ return new class extends Migration
     {
         Schema::create('applications', function (Blueprint $collection) {
             $collection->id();
-            $collection->string('name');
+            $collection->string('name')->index();
+            $collection->string('status')->index();
+            $collection->number('services_count')->default(0);
             $collection->string('compose_file');
             $collection->json('services');
             $collection->timestamps();

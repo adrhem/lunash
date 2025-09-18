@@ -2,16 +2,15 @@
 
 namespace App\Console\Commands;
 
-use App\Models\Container;
-use App\Models\DockerManifest;
+use App\Models\Application;
 use Illuminate\Console\Command;
 
 class DockerHelper extends Command
 {
 
-    private const array AVAILABLE_ACTIONS = ['ps', 'manifest'];
-    public final static array $format = ['container_id', 'image', 'name', 'state', 'command'];
-    public final static string $separator = '|';
+    private const array AVAILABLE_ACTIONS = ['refresh', 'start', 'stop', 'restart', 'logs'];
+    public final static array $format = ['name', 'status', 'services_count', 'compose_file'];
+    public final static string $separator = '/\s+/';
 
     /**
      * The name and signature of the console command.
@@ -20,7 +19,7 @@ class DockerHelper extends Command
      */
     protected $signature = 'docker
                                 {action : The action to perform (ps, manifest)}
-                                {image? : The image tag for other actions (image:tag}';
+                                {name? : The name of the docker-compose application (required for start, stop, restart)}';
 
     /**
      * The console command description.
@@ -31,100 +30,194 @@ class DockerHelper extends Command
 
     /**
      * Execute the console command.
+     * // see https://tldp.org/LDP/abs/html/exitcodes.html
+     * @return int {SUCCESS=0, FAILURE=1, INVALID=2}
      */
     public function handle(): int
     {
         $action = $this->argument('action');
-        $image = $this->argument('image') ?? null;
+        $name = $this->argument('name') ?? null;
 
         if (!in_array($action, self::AVAILABLE_ACTIONS)) {
             $this->error("Invalid action. Available actions are: " . implode(', ', self::AVAILABLE_ACTIONS));
             return Command::INVALID;
         }
 
+        if ($action !== 'refresh' && empty($name)) {
+            $this->error("The name to the docker-compose application is required for this action.");
+            return Command::INVALID;
+        }
+
         return match ($action) {
-            'ps' => $this->listContainers(),
-            'manifest' => $this->manifest($image),
+            'refresh' => $this->refreshContainers(),
+            'start' => $this->startContainer(Application::where('name', $name)->firstOrFail()),
+            'stop' => $this->stopContainer(Application::where('name', $name)->firstOrFail()),
+            'restart' => $this->restartContainer(Application::where('name', $name)->firstOrFail()),
+            'logs' => $this->viewLogs(Application::where('name', $name)->firstOrFail()),
             default => Command::INVALID,
         };
     }
 
-    private function manifest(?string $image): int
-    {
-        if (empty($image)) {
-            $this->error("The 'manifest' action requires an image name.");
-            return Command::INVALID;
-        }
-
-        [$image, $tag] = explode(':', $image) + [1 => 'latest'];
-        $manifest = DockerManifest::where('image', $image)->where('tag', $tag)->first();
-
-        if (!empty($manifest)) {
-            $this->info("Manifest for tag '$tag' already exists in the database.");
-            return Command::SUCCESS;
-        }
-
-        $output = [];
-        $returnVar = 0;
-        $command = sprintf('docker manifest inspect %s', escapeshellarg($tag));
-        exec($command, $output, $returnVar);
-
-        if ($returnVar !== Command::SUCCESS) {
-            $this->error("Failed to execute docker command. Please ensure Docker is installed and running.");
-            return Command::FAILURE;
-        }
-
-        $imageManifest = json_decode(self::curateExecOutput($output), associative: true);
-
-        return Command::SUCCESS;
-    }
-
-    private function listContainers(): int
+    /**
+     * 
+     * Refresh the list of Docker containers by executing `docker compose ls` command
+     * and updating the database accordingly.
+     * // see https://tldp.org/LDP/abs/html/exitcodes.html
+     * @return int {SUCCESS=0, FAILURE=1, INVALID=2}
+     * 
+     */
+    private function refreshContainers(): int
     {
         $output = [];
         $returnVar = 0;
 
-        $command = sprintf(
-            'docker ps -a --no-trunc --format "table {{.ID}}%1$s{{.Image}}%1$s{{.Names}}%1$s{{.State}}%1$s{{.Command}}"',
-            self::$separator
-        );
-
-        exec($command, $output, $returnVar);
+        exec('docker compose ls --all', $output, $returnVar);
 
         if ($returnVar !== Command::SUCCESS) {
-            $this->error("Failed to execute docker command. Please ensure Docker is installed and running.");
+            $this->error(implode("\n", $output));
             return Command::FAILURE;
         }
+        $existingNames = Application::pluck('name')->toArray();
+        $services = [];
 
         foreach (
-            $containers = array_map(function ($line) {
-                return explode(self::$separator, $line);
-            }, array_slice($output, 1)) as $container
+            array_map(function ($line) {
+                return preg_split(self::$separator, trim($line));
+            }, array_slice($output, 1)) as $value
         ) {
-            $data = array_combine(self::$format, $container);
+            [$name, $status, $compose_file] = $value;
+            $matches = preg_split('/\(|\)/', $status);
+            [$status, $services_count] = [$matches[0] ?? $status, $matches[1] ?? 0];
 
-            Container::updateOrCreate(
-                ['container_id' => $data['container_id']],
-                $data
+            $service = Application::updateOrCreate(
+                ['name' => $name],
+                array_combine(self::$format, [$name, $status, $services_count, $compose_file])
             );
+
+            $services[] = $service->only(self::$format);
         }
+
+        Application::whereNotIn('name', array_column($services, 'name'))->delete();
 
         if (php_sapi_name() === 'cli') {
             $this->table(
-                self::$format,
-                $containers
+                self::$format + ['created_at', 'updated_at'],
+                $services
             );
         }
 
         return Command::SUCCESS;
     }
 
-    private static function curateExecOutput(array $output): string
+    /**
+     * Start a Docker container using the provided docker-compose file path.
+     * @param Application $application The application model.
+     * @return int {SUCCESS=0, FAILURE=1, INVALID=2}
+     */
+    private function startContainer(Application $application): int
     {
-        $curated = [];
-        foreach ($output as $line) {
-            $curated[] = trim(preg_replace('/\s+/', ' ', $line));
+
+        $output = [];
+        $returnVar = 0;
+
+        if (!file_exists($application->compose_file)) {
+            $this->error("The docker-compose file '{$application->compose_file}' does not exist.");
+            return Command::INVALID;
         }
-        return implode(PHP_EOL, $output);
+
+        exec("docker compose -f {$application->compose_file} up -d", $output, $returnVar);
+
+        if ($returnVar !== Command::SUCCESS) {
+            $this->error(implode("\n", $output));
+            return Command::FAILURE;
+        }
+
+        $this->info("Container '{$application->name}' started successfully.");
+        $application->update(['status' => 'running']);
+        return Command::SUCCESS;
+    }
+
+    /**
+     * Stop a Docker container using the provided docker-compose file path.
+     * @param Application $application The application model.
+     * @return int {SUCCESS=0, FAILURE=1, INVALID=2}
+     */
+    private function stopContainer(Application $application): int
+    {
+        $output = [];
+        $returnVar = 0;
+
+        if (!file_exists($application->compose_file)) {
+            $this->error("The docker-compose file '{$application->compose_file}' does not exist.");
+            return Command::INVALID;
+        }
+
+        exec("docker compose -f {$application->compose_file} stop", $output, $returnVar);
+
+        if ($returnVar !== Command::SUCCESS) {
+            $this->error(implode("\n", $output));
+            return Command::FAILURE;
+        }
+
+        $this->info("Container '{$application->name}' stopped successfully.");
+        $application->update(['status' => 'exited']);
+        return Command::SUCCESS;
+    }
+
+    /**
+     * Restart a Docker container using the provided docker-compose file path.
+     * @param Application $application The application model.
+     * @return int {SUCCESS=0, FAILURE=1, INVALID=2}
+     */
+    private function restartContainer(Application $application): int
+    {
+        $output = [];
+        $returnVar = 0;
+
+        if (!file_exists($application->compose_file)) {
+            $this->error("The docker-compose file '{$application->compose_file}' does not exist.");
+            return Command::INVALID;
+        }
+
+        exec("docker compose -f {$application->compose_file} restart", $output, $returnVar);
+
+        if ($returnVar !== Command::SUCCESS) {
+            $this->error(implode("\n", $output));
+            return Command::FAILURE;
+        }
+
+        $this->info("Container '{$application->name}' restarted successfully.");
+        $application->update(['status' => 'running']);
+        return Command::SUCCESS;
+    }
+
+    /**
+     * View logs of a Docker container using the provided docker-compose file path.
+     * @param Application $application The application model.
+     * @return int {SUCCESS=0, FAILURE=1, INVALID=2}
+     */
+    private function viewLogs(Application $application): int
+    {
+        $output = [];
+        $returnVar = 0;
+
+        if (!file_exists($application->compose_file)) {
+            $this->error("The docker-compose file '{$application->compose_file}' does not exist.");
+            return Command::INVALID;
+        }
+
+        exec("docker compose -f {$application->compose_file} logs", $output, $returnVar);
+
+        if ($returnVar !== Command::SUCCESS) {
+            $this->error(implode("\n", $output));
+            return Command::FAILURE;
+        }
+
+        $this->info("Logs for container '{$application->name}':");
+
+        foreach ($output as $line) {
+            $this->line($line);
+        }
+        return Command::SUCCESS;
     }
 }
