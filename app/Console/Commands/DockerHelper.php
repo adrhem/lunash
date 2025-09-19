@@ -8,7 +8,7 @@ use Illuminate\Console\Command;
 class DockerHelper extends Command
 {
 
-    private const array AVAILABLE_ACTIONS = ['refresh', 'start', 'stop', 'restart', 'logs'];
+    private const array AVAILABLE_ACTIONS = ['refresh', 'start', 'stop', 'restart', 'logs', 'pull'];
     public final static array $format = ['name', 'status', 'services_count', 'compose_file'];
     public final static string $separator = '/\s+/';
 
@@ -54,6 +54,7 @@ class DockerHelper extends Command
             'stop' => $this->stopContainer(Application::where('name', $name)->firstOrFail()),
             'restart' => $this->restartContainer(Application::where('name', $name)->firstOrFail()),
             'logs' => $this->viewLogs(Application::where('name', $name)->firstOrFail()),
+            'pull' => $this->pullApplication(Application::where('name', $name)->firstOrFail()),
             default => Command::INVALID,
         };
     }
@@ -217,6 +218,32 @@ class DockerHelper extends Command
         foreach ($output as $line) {
             $this->line($line);
         }
+        return Command::SUCCESS;
+    }
+
+    /**
+     * Pull the latest images for a Docker container using the provided docker-compose file path.
+     * @param Application $application The application model.
+     * @return int {SUCCESS=0, FAILURE=1, INVALID=2}
+     */
+    private function pullApplication(Application $application): int
+    {
+        $output = [];
+        $returnVar = 0;
+
+        if (!file_exists($application->compose_file)) {
+            $this->error("The docker-compose file '{$application->compose_file}' does not exist.");
+            return Command::INVALID;
+        }
+
+        exec("docker compose -f {$application->compose_file} pull", $output, $returnVar);
+
+        if ($returnVar !== Command::SUCCESS) {
+            $this->error(implode("\n", $output));
+            return Command::FAILURE;
+        }
+
+        $this->info("Images for application '{$application->name}' pulled successfully.");
         return Command::SUCCESS;
     }
 }

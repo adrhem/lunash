@@ -3,9 +3,9 @@
 namespace App\Filament\Resources\Applications\Tables;
 
 use App\Filament\Resources\Applications\Actions;
+use Filament\Actions\ActionGroup;
 use Filament\Tables\Table;
 use Filament\Tables\Columns\TextColumn;
-
 
 class ApplicationsTable
 {
@@ -29,9 +29,12 @@ class ApplicationsTable
                 TextColumn::make('created_at')->label('Created')->dateTime('Y-m-d H:i:s'),
                 TextColumn::make('updated_at')->label('Last Updated')->dateTime('Y-m-d H:i:s'),
             ])->recordActions([
-                Actions\Start::make(),
-                Actions\Stop::make(),
-                Actions\Restart::make(),
+                ActionGroup::make([
+                    Actions\Pull::make(),
+                    Actions\Start::make(),
+                    Actions\Stop::make(),
+                    Actions\Restart::make(),
+                ]),
             ])
             ->defaultGroup('status')
             ->emptyStateHeading('No applications! Click on the refresh button to load them.');

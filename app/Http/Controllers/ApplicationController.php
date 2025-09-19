@@ -129,4 +129,30 @@ class ApplicationController extends Controller
             return redirect()->back();
         }
     }
+
+    public function pull(string $id)
+    {
+        $application = Application::findOrFail($id);
+        $status = Artisan::call('docker pull ' . $application->name);
+
+        if ($status === Command::SUCCESS) {
+            Notification::make()
+                ->title('Application images pulled successfully.')
+                ->success()
+                ->send();
+        } else {
+            Notification::make()
+                ->title('Failed to pull application images. Please check the logs for details.')
+                ->body(Artisan::output())
+                ->danger()
+                ->actions([
+                    Actions\Logs::make($application->id),
+                ])
+                ->send();
+
+            RefreshApplications::dispatch();
+        }
+
+        return redirect()->back();
+    }
 }

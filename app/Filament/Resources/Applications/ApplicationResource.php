@@ -12,6 +12,7 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use Illuminate\Support\HtmlString;
 
 class ApplicationResource extends Resource
 {
@@ -71,9 +72,13 @@ class ApplicationResource extends Resource
                         Infolists\Components\TextEntry::make('image')
                             ->label('Image')
                             ->icon(Heroicon::Cube)
-                            ->copyable()
-                            ->copyMessage('Copied to clipboard')
-                            ->copyMessageDuration(1500)
+                            ->formatStateUsing(fn(string $state): HtmlString => new HtmlString(
+                                sprintf(
+                                    '%1$s <a href="https://hub.docker.com/r/%1$s" target="_blank" class="%2$s"><small>➜ DockerHub</small></a>',
+                                    $state,
+                                    'underline text-primary-600 hover:text-primary-700 visited:text-primary-600'
+                                )
+                            ))
                             ->columnSpanFull(),
                         Infolists\Components\TextEntry::make('tag')
                             ->label('tag')
