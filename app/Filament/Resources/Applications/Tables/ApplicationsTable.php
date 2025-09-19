@@ -29,8 +29,9 @@ class ApplicationsTable
                 TextColumn::make('created_at')->label('Created')->dateTime('Y-m-d H:i:s'),
                 TextColumn::make('updated_at')->label('Last Updated')->dateTime('Y-m-d H:i:s'),
             ])->recordActions([
+                Actions\Pull::make(),
+                Actions\PullAndUp::make(),
                 ActionGroup::make([
-                    Actions\Pull::make(),
                     Actions\Start::make(),
                     Actions\Stop::make(),
                     Actions\Restart::make(),

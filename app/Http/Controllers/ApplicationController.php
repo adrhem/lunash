@@ -155,4 +155,30 @@ class ApplicationController extends Controller
 
         return redirect()->back();
     }
+
+    public function pullAndUp(string $id)
+    {
+        $application = Application::findOrFail($id);
+        $status = Artisan::call('docker pull-and-up ' . $application->name);
+
+        if ($status === Command::SUCCESS) {
+            Notification::make()
+                ->title('Application pulled and started successfully.')
+                ->success()
+                ->send();
+        } else {
+            Notification::make()
+                ->title('Failed to pull and start the application. Please check the logs for details.')
+                ->body(Artisan::output())
+                ->danger()
+                ->actions([
+                    Actions\Logs::make($application->id),
+                ])
+                ->send();
+
+            RefreshApplications::dispatch();
+        }
+
+        return redirect()->back();
+    }
 }

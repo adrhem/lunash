@@ -8,7 +8,7 @@ use Illuminate\Console\Command;
 class DockerHelper extends Command
 {
 
-    private const array AVAILABLE_ACTIONS = ['refresh', 'start', 'stop', 'restart', 'logs', 'pull'];
+    private const array AVAILABLE_ACTIONS = ['refresh', 'start', 'stop', 'restart', 'logs', 'pull', 'pull-and-up'];
     public final static array $format = ['name', 'status', 'services_count', 'compose_file'];
     public final static string $separator = '/\s+/';
 
@@ -55,6 +55,9 @@ class DockerHelper extends Command
             'restart' => $this->restartContainer(Application::where('name', $name)->firstOrFail()),
             'logs' => $this->viewLogs(Application::where('name', $name)->firstOrFail()),
             'pull' => $this->pullApplication(Application::where('name', $name)->firstOrFail()),
+            'pull-and-up' => $this->pullApplication(Application::where('name', $name)->firstOrFail()) === Command::SUCCESS
+                ? $this->startContainer(Application::where('name', $name)->firstOrFail())
+                : Command::FAILURE,
             default => Command::INVALID,
         };
     }
@@ -236,7 +239,7 @@ class DockerHelper extends Command
             return Command::INVALID;
         }
 
-        exec("docker compose -f {$application->compose_file} pull", $output, $returnVar);
+        exec("docker compose -f {$application->compose_file} pull > /dev/null &", $output, $returnVar);
 
         if ($returnVar !== Command::SUCCESS) {
             $this->error(implode("\n", $output));
