@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('applications', function (Blueprint $collection) {
             $collection->id();
             $collection->string('name')->index();
-            $collection->string('status')->index();
+            $collection->string('status');
             $collection->number('services_count')->default(0);
             $collection->string('compose_file');
             $collection->json('services'); // embedded documents
