@@ -3,12 +3,13 @@
 namespace App\Console\Commands;
 
 use App\Models\Application;
+use App\Models\Service;
 use Illuminate\Console\Command;
 
 class DockerHelper extends Command
 {
 
-    private const array AVAILABLE_ACTIONS = ['refresh', 'start', 'stop', 'restart', 'logs', 'pull', 'pull-and-up'];
+    private const array AVAILABLE_ACTIONS = ['refresh', 'start', 'stop', 'restart', 'logs', 'pull', 'pull-and-up', 'images'];
     public final static array $format = ['name', 'status', 'services_count', 'compose_file'];
 
     /**
@@ -53,6 +54,7 @@ class DockerHelper extends Command
             'stop' => $this->stopContainer(Application::where('name', $name)->firstOrFail()),
             'restart' => $this->restartContainer(Application::where('name', $name)->firstOrFail()),
             'logs' => $this->viewLogs(Application::where('name', $name)->firstOrFail()),
+            'images' => $this->getImages(Application::where('name', $name)->firstOrFail()),
             'pull' => $this->pullApplication(Application::where('name', $name)->firstOrFail()),
             'pull-and-up' => $this->pullApplication(Application::where('name', $name)->firstOrFail()) === Command::SUCCESS
                 ? $this->startContainer(Application::where('name', $name)->firstOrFail())
@@ -90,7 +92,7 @@ class DockerHelper extends Command
                 ['name' => $name],
                 array_combine(self::$format, [$name, $status, $services_count, $compose_file])
             );
-
+            self::getImages($service);
             $services[] = $service->only(self::$format);
         }
 
@@ -239,6 +241,51 @@ class DockerHelper extends Command
         foreach ($output as $line) {
             $this->line($line);
         }
+        return Command::SUCCESS;
+    }
+
+
+    /**
+     * Get images of a Docker container using the provided docker-compose file path.
+     * @param Application $application The application model.
+     * @return int {SUCCESS=0, FAILURE=1, INVALID=2}
+     */
+    private function getImages(Application $application): int
+    {
+        $output = [];
+        $returnVar = 0;
+
+        if (!file_exists($application->compose_file)) {
+            $this->error("The docker-compose file '{$application->compose_file}' does not exist.");
+            return Command::INVALID;
+        }
+
+        exec("docker compose -f {$application->compose_file} images --format json", $output, $returnVar);
+
+        if ($returnVar !== Command::SUCCESS) {
+            $this->error(implode("\n", $output));
+            return Command::FAILURE;
+        }
+
+        $application->services()->delete();
+
+        foreach (json_decode((string) implode("\n", $output), true) as $value) {
+            [$image_id, $container_name, $repository, $tag, $platform, $size, $last_tag_time] = array_values($value);
+            $application->services()->performInsert(
+                Service::updateOrCreate(
+                    ['name' => $container_name, 'image_id' => $image_id],
+                    [
+                        'name' => $container_name,
+                        'image_id' => $image_id,
+                        'repository' => $repository,
+                        'tag' => $tag,
+                        'platform' => $platform,
+                        'size' => $size,
+                    ]
+                )
+            );
+        }
+
         return Command::SUCCESS;
     }
 

@@ -8,6 +8,7 @@ use App\Filament\Resources\Applications\Tables\ApplicationsTable;
 use App\Models\Application;
 use BackedEnum;
 use Filament\Infolists;
+use Filament\Infolists\View\InfolistsIconAlias;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
@@ -65,11 +66,19 @@ class ApplicationResource extends Resource
                 Infolists\Components\RepeatableEntry::make('services')
                     ->label('Services')
                     ->schema([
+                        // 'image_id', 'name', 'repository', 'tag', 'platform', 'size',
+                        Infolists\Components\TextEntry::make('image_id')
+                            ->label('Image ID')
+                            ->icon(Heroicon::Identification)
+                            ->copyable()
+                            ->copyMessage('Copied to clipboard')
+                            ->copyMessageDuration(1500)
+                            ->columnSpanFull(),
                         Infolists\Components\TextEntry::make('name')
                             ->label('Service Name')
                             ->icon(Heroicon::Hashtag)
                             ->columnSpanFull(),
-                        Infolists\Components\TextEntry::make('image')
+                        Infolists\Components\TextEntry::make('repository')
                             ->label('Image')
                             ->icon(Heroicon::Cube)
                             ->formatStateUsing(fn(string $state): HtmlString => match ($state) {
@@ -86,6 +95,15 @@ class ApplicationResource extends Resource
                         Infolists\Components\TextEntry::make('tag')
                             ->label('tag')
                             ->icon(Heroicon::Hashtag)
+                            ->columnSpanFull(),
+                        Infolists\Components\TextEntry::make('platform')
+                            ->label('Platform')
+                            ->icon(Heroicon::CubeTransparent)
+                            ->columnSpanFull(),
+                        Infolists\Components\TextEntry::make('size')
+                            ->label('Size')
+                            ->icon(Heroicon::ArrowsPointingOut)
+                            ->formatStateUsing(fn(?int $state): string => $state ? sprintf('%.2f MB', $state / (1024 * 1024)) : 'N/A')
                             ->columnSpanFull(),
                     ])
                     ->columnSpanFull(),

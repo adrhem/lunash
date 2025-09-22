@@ -12,8 +12,11 @@ class Service extends Model
      * @var list<string>
      */
     protected $fillable = [
+        'image_id',
         'name',
-        'image',
-        'tag'
+        'repository',
+        'tag',
+        'platform',
+        'size',
     ];
 }
