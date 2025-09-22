@@ -1,0 +1,43 @@
+services:
+  db:
+    image: mongo:latest
+    restart: always
+    volumes:
+      - mongo-data:/data/db
+    # uncomment the following lines to expose MongoDB to the host machine
+    ports:
+      - 27017:27017
+    networks:
+      - default
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGODB_USERNAME}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGODB_PASSWORD}
+
+  app:
+    build: .
+    ports:
+      - 8080:80
+    volumes:
+      - ./:/var/www/html/
+      - /var/run/docker.sock:/var/run/docker.sock # Linux path to docker.sock
+      - ./entrypoint.sh:/root/entrypoint.sh
+    depends_on:
+      - db
+    networks:
+      - default
+    post_start:
+      - command: chmod +x /root/entrypoint.sh && sh /root/entrypoint.sh
+    environment:
+      MONGODB_DATABASE: ${MONGODB_DATABASE}
+      MONGODB_USERNAME: ${MONGODB_USERNAME}
+      MONGODB_PASSWORD: ${MONGODB_PASSWORD}
+      MONGODB_URI: ${MONGODB_URI}
+      APP_ENV: ${APP_ENV}
+      APP_KEY: ${APP_KEY}
+      APP_DEBUG: ${APP_DEBUG}
+
+networks:
+  default:
+    driver: bridge
+volumes:
+  mongo-data:

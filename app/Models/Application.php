@@ -44,10 +44,11 @@ class Application extends Model
             }
 
             return array_map(function (array $config, string $name) {
-                [$image, $tag] = explode(':', trim($config['image'], " \n\r\t\v\0\"")) + [1 => 'latest'];
+                [$image, $tag] = explode(':', trim($config['image'] ?? '', " \n\r\t\v\0\"")) + [1 => 'latest'];
+
                 return [
                     'name' => $config['container_name'] ?? $name,
-                    'image' => $image,
+                    'image' => $image ?: 'custom-build',
                     'tag' => $tag,
                 ];
             }, $parsed['services'], array_keys($parsed['services']));

@@ -72,13 +72,16 @@ class ApplicationResource extends Resource
                         Infolists\Components\TextEntry::make('image')
                             ->label('Image')
                             ->icon(Heroicon::Cube)
-                            ->formatStateUsing(fn(string $state): HtmlString => new HtmlString(
-                                sprintf(
-                                    '%1$s <a href="https://hub.docker.com/r/%1$s" target="_blank" class="%2$s"><small>➜ DockerHub</small></a>',
-                                    $state,
-                                    'underline text-primary-600 hover:text-primary-700 visited:text-primary-600'
-                                )
-                            ))
+                            ->formatStateUsing(fn(string $state): HtmlString => match ($state) {
+                                'custom-build' => new HtmlString('<span class="italic text-gray-500">custom-build</span>'),
+                                default => new HtmlString(
+                                    sprintf(
+                                        '%1$s <a href="https://hub.docker.com/r/%1$s" target="_blank" class="%2$s"><small>➜ DockerHub</small></a>',
+                                        $state,
+                                        'underline text-primary-600 hover:text-primary-700 visited:text-primary-600'
+                                    )
+                                ),
+                            })
                             ->columnSpanFull(),
                         Infolists\Components\TextEntry::make('tag')
                             ->label('tag')

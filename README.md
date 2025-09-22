@@ -18,14 +18,15 @@ We don't want to replace existing tools but rather offer an alternative that foc
 
 ## Development
 
-We provide a docker image for development and a docker-compose file to run the application. However, you can also run the application directly on your machine if you prefer.
+We provide a docker image for development and a docker-compose file to run the application. However, due to limitations with sharing files between the host and the container, we recommend running the application locally in the meantime we find a better solution.
 
 ### Using Docker-compose
 
--   Download the `docker-compose.yml` file from the repository.
--   Run `docker-compose pull` to pull the latest image.
--   Run `docker-compose up -d` to start the application.
--   Navigate to `http://localhost:8000` in your web browser to access the application.
+-   Download repo.
+-   Copy the `.env.example` file to `.env` and configure the environment variables as needed.
+-   Run `docker-compose build` to build the image.
+-   Run `docker-compose up -d` to start the application. It will also pull the MongoDB image if you don't have it already.
+-   Navigate to `http://localhost:8080` in your web browser to access the application.
 
 ### Running Locally
 
@@ -36,5 +37,11 @@ We provide a docker image for development and a docker-compose file to run the a
 -   Clone the repository to your local machine.
 -   Copy the `.env.example` file to `.env` and configure the environment variables as needed.
 -   Navigate to the project directory and run `composer install` to install the dependencies.
--   Run the project with artisan: `php artisan serve`.
+-   Generate the application key with `php artisan key:generate`.
+-   Run the database migrations and seeds with `php artisan migrate` and `php artisan db:seed`.
+-   Run the project with artisan: `php artisan serve`. (It supports valet too)
 -   Navigate to `http://localhost:8000` in your web browser to access the application.
+
+### Troubleshooting
+
+I highly recommend changing the `credsStore` in your Docker config file (`~/.docker/config.json`) to any docker-credential-helper or remove it completely if you are using Docker Desktop. This is because the default `desktop` credential store does not work well with php exec functions, which are used in this project to interact with Docker. If you don't change this, you may encounter issues when trying to manage your Docker containers through Lunash.

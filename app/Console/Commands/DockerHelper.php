@@ -10,7 +10,6 @@ class DockerHelper extends Command
 
     private const array AVAILABLE_ACTIONS = ['refresh', 'start', 'stop', 'restart', 'logs', 'pull', 'pull-and-up'];
     public final static array $format = ['name', 'status', 'services_count', 'compose_file'];
-    public final static string $separator = '/\s+/';
 
     /**
      * The name and signature of the console command.
@@ -75,7 +74,7 @@ class DockerHelper extends Command
         $output = [];
         $returnVar = 0;
 
-        exec('docker compose ls --all', $output, $returnVar);
+        exec('docker compose ls --all --format json', $output, $returnVar);
 
         if ($returnVar !== Command::SUCCESS) {
             $this->error(implode("\n", $output));
@@ -83,15 +82,10 @@ class DockerHelper extends Command
         }
         $services = [];
 
-        foreach (
-            array_map(function ($line) {
-                return preg_split(self::$separator, trim($line));
-            }, array_slice($output, 1)) as $value
-        ) {
-            [$name, $status, $compose_file] = $value;
-            $matches = preg_split('/\(|\)/', $status);
-            [$status, $services_count] = [$matches[0] ?? $status, $matches[1] ?? 0];
+        foreach (json_decode((string) implode("\n", $output), true) as $value) {
 
+            [$name, $status, $compose_file] = array_values($value);
+            [$status, $services_count] = self::extractStatusAndServiceCount($status);
             $service = Application::updateOrCreate(
                 ['name' => $name],
                 array_combine(self::$format, [$name, $status, $services_count, $compose_file])
@@ -110,6 +104,30 @@ class DockerHelper extends Command
         }
 
         return Command::SUCCESS;
+    }
+
+    /**
+     * Extract the status and service count from the status string.
+     * @param string $status The status string from `docker compose ls`.
+     * @return array An array containing the status and service count.
+     */
+    private static function extractStatusAndServiceCount(string $status): array
+    {
+        $services_count = 0;
+        $last_status = '';
+
+        foreach (explode(', ', $status) as $state) {
+            if ($last_status === '') {
+                $matches = preg_split('/\(|\)/', $state);
+                [$last_status, $services_count] = [$matches[0] ?? $state, $matches[1] ?? 0];
+            } else {
+                $matches = preg_split('/\(|\)/', $state);
+                [$_, $count] = [$matches[0] ?? $state, $matches[1] ?? 0];
+                $services_count += $count;
+                $last_status = 'mixed';
+            }
+        }
+        return [$last_status, (int) $services_count];
     }
 
     /**
@@ -239,8 +257,7 @@ class DockerHelper extends Command
             return Command::INVALID;
         }
 
-        exec("docker compose -f {$application->compose_file} pull > /dev/null &", $output, $returnVar);
-
+        exec("docker compose -f {$application->compose_file} pull 2>&1", $output, $returnVar);
         if ($returnVar !== Command::SUCCESS) {
             $this->error(implode("\n", $output));
             return Command::FAILURE;
