@@ -34,6 +34,7 @@ We provide a docker image for development and a docker-compose file to run the a
 -   -   PHP 8.1 or higher and Composer installed on your machine.
 -   -   Docker and Docker Compose installed and running with a few containers to manage.
 -   -   MongoDB installed and its pecl extension enabled in your PHP installation. You can find the installation instructions [here](https://www.php.net/manual/en/mongodb.installation.php).
+-   -   Chrome or any Chromium-based browser installed on your machine for checking updates on docker hub registry.
 -   Clone the repository to your local machine.
 -   Copy the `.env.example` file to `.env` and configure the environment variables as needed.
 -   Navigate to the project directory and run `composer install` to install the dependencies.
