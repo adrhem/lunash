@@ -25,6 +25,13 @@ class ApplicationsTable
                         'created' => 'info',
                         default => 'gray',
                     }),
+                TextColumn::make('has_updates_text')
+                    ->label('Has Updates?')
+                    ->badge()
+                    ->color(fn(string $state): string => match ($state) {
+                        'Yes' => 'success',
+                        default => 'gray',
+                    }),
                 TextColumn::make('services_count')->label('Services'),
                 TextColumn::make('created_at')->label('Created')->dateTime('Y-m-d H:i:s'),
                 TextColumn::make('updated_at')->label('Last Updated')->dateTime('Y-m-d H:i:s'),

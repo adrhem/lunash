@@ -11,6 +11,7 @@ Route::middleware('auth')->group(function () {
         Route::post('restart/{id}', [ApplicationController::class, 'restart'])->name('restart');
         Route::post('pull/{id}', [ApplicationController::class, 'pull'])->name('pull');
         Route::post('pull-and-up/{id}', [ApplicationController::class, 'pullAndUp'])->name('pull-and-up');
+        Route::post('/', [ApplicationController::class, 'updates'])->name('updates');
         Route::get('logs/{id}', [ApplicationController::class, 'logs'])->name('logs');
     });
 });

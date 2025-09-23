@@ -17,6 +17,7 @@ return new class extends Migration
             $collection->string('status');
             $collection->number('services_count')->default(0);
             $collection->string('compose_file');
+            $collection->boolean('has_updates')->default(false);
             $collection->json('services'); // embedded documents
             $collection->timestamps();
         });

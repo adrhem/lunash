@@ -17,9 +17,17 @@ class Application extends Model
         'name',
         'status',
         'services_count',
+        'has_updates',
         'compose_file',
         'services',
     ];
+
+    public function hasUpdatesText(): Attribute
+    {
+        return Attribute::make(
+            get: fn() => $this->has_updates ? 'Yes' : 'No'
+        );
+    }
 
     public function services(): EmbedsMany
     {

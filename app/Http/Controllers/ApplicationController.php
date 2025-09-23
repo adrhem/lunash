@@ -5,12 +5,94 @@ namespace App\Http\Controllers;
 use App\Filament\Resources\Applications\Actions;
 use App\Jobs\RefreshApplications;
 use App\Models\Application;
+use App\Models\Service;
+use Exception;
 use Filament\Notifications\Notification;
+use HeadlessChromium\Browser\ProcessAwareBrowser;
+use HeadlessChromium\Exception\BrowserConnectionFailed;
+use HeadlessChromium\BrowserFactory;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Console\Command;
+use RuntimeException;
 
 class ApplicationController extends Controller
 {
+
+    public function updates()
+    {
+        $applications = Application::all();
+
+        if ($applications->isEmpty()) {
+            Notification::make()
+                ->title('No applications found to check for updates.')
+                ->warning()
+                ->send();
+
+            return redirect()->back();
+        }
+
+        try {
+            $browserFactory = new BrowserFactory();
+            $browser = $browserFactory->createBrowser();
+            $updates = [];
+            foreach ($applications as $application) {
+                $hasUpdates = false;
+                foreach ($application->services as $service) {
+
+                    if (empty($service->repository_url) || empty($service->repository)) {
+                        continue;
+                    }
+
+                    $hasUpdates = $this->checkForUpdates($browser, $service);
+
+                    if ($hasUpdates) {
+                        $updates[] = $application->name;
+                        break; // No need to check other services if one has updates
+                    }
+                }
+                if ($hasUpdates) {
+                    $application->update(['has_updates' => true]);
+                }
+            }
+        } catch (RuntimeException $e) {
+            Notification::make()
+                ->title('Failed to launch headless browser. Please ensure that Chrome or Chromium is installed on the server.')
+                ->body($e->getMessage())
+                ->danger()
+                ->send();
+        } catch (BrowserConnectionFailed $e) {
+            Notification::make()
+                ->title('Failed to connect to the headless browser. Please ensure that Chrome or Chromium is installed on the server.')
+                ->body($e->getMessage())
+                ->danger()
+                ->send();
+        } catch (Exception $e) {
+            Notification::make()
+                ->title('Error occurred while checking for updates.')
+                ->body($e->getMessage())
+                ->danger()
+                ->send();
+        } finally {
+            if (isset($browser)) {
+                $browser->close();
+            }
+        }
+
+        return redirect()->back();
+    }
+
+    private function checkForUpdates(ProcessAwareBrowser $browser, Service $service): bool
+    {
+        $page = $browser->createPage();
+        $page->navigate($service->repository_url)->waitForNavigation();
+
+        $script = $page->evaluate('document.querySelector("[data-testid=\'layerDetailHeader-digest\']").innerText');
+        $sha256 = $script?->getReturnValue() ?? null;
+
+        $page->close();
+
+        return !empty($sha256) && $sha256 !== $service->image_id;
+    }
 
     public function refresh()
     {
@@ -166,6 +248,8 @@ class ApplicationController extends Controller
                 ->title('Application pulled and started successfully.')
                 ->success()
                 ->send();
+            $application->update(['has_updates' => false]);
+            Artisan::call('docker', ['action' => 'images', 'name' => $application->name]);
         } else {
             Notification::make()
                 ->title('Failed to pull and start the application. Please check the logs for details.')

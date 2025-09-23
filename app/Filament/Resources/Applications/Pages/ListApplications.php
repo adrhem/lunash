@@ -14,6 +14,7 @@ class ListApplications extends ListRecords
     {
         return [
             Actions\Refresh::make(),
+            Actions\Updates::make(),
         ];
     }
 }
