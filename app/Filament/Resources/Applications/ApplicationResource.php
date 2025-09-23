@@ -14,6 +14,7 @@ use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
 use Illuminate\Support\HtmlString;
+use stdClass;
 
 class ApplicationResource extends Resource
 {
@@ -78,18 +79,22 @@ class ApplicationResource extends Resource
                             ->label('Service Name')
                             ->icon(Heroicon::Hashtag)
                             ->columnSpanFull(),
-                        Infolists\Components\TextEntry::make('repository')
+                        Infolists\Components\TextEntry::make('repository_json')
                             ->label('Image')
                             ->icon(Heroicon::Cube)
-                            ->formatStateUsing(fn(string $state): HtmlString => match ($state) {
-                                'custom-build' => new HtmlString('<span class="italic text-gray-500">custom-build</span>'),
-                                default => new HtmlString(
-                                    sprintf(
-                                        '%1$s <a href="https://hub.docker.com/r/%1$s" target="_blank" class="%2$s"><small>➜ DockerHub</small></a>',
-                                        $state,
-                                        'underline text-primary-600 hover:text-primary-700 visited:text-primary-600'
-                                    )
-                                ),
+                            ->formatStateUsing(function (string $state): HtmlString {
+                                $state = json_decode($state, true);
+                                return match ($state['label']) {
+                                    'custom-build', null => new HtmlString('<span class="italic text-gray-500">custom-build</span>'),
+                                    default => new HtmlString(
+                                        sprintf(
+                                            '%1$s <a href="%2$s" target="_blank" class="%3$s"><small>➜ DockerHub</small></a>',
+                                            $state['label'],
+                                            $state['url'],
+                                            'underline text-primary-600 hover:text-primary-700 visited:text-primary-600'
+                                        )
+                                    ),
+                                };
                             })
                             ->columnSpanFull(),
                         Infolists\Components\TextEntry::make('tag')
@@ -99,11 +104,13 @@ class ApplicationResource extends Resource
                         Infolists\Components\TextEntry::make('platform')
                             ->label('Platform')
                             ->icon(Heroicon::CubeTransparent)
+                            ->visible(fn(?string $state): bool => !empty($state))
                             ->columnSpanFull(),
                         Infolists\Components\TextEntry::make('size')
                             ->label('Size')
                             ->icon(Heroicon::ArrowsPointingOut)
                             ->formatStateUsing(fn(?int $state): string => $state ? sprintf('%.2f MB', $state / (1024 * 1024)) : 'N/A')
+                            ->visible(fn(?string $state): bool => !empty($state))
                             ->columnSpanFull(),
                     ])
                     ->columnSpanFull(),
